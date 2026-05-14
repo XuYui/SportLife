@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <include
+        domain="database"
+        path="sport_life.db" />
+    <include
+        domain="database"
+        path="sport_life.db-shm" />
+    <include
+        domain="database"
+        path="sport_life.db-wal" />
+    <include
+        domain="sharedpref"
+        path="sport_life_preferences.xml" />
+</full-backup-content>
