@@ -31,6 +31,9 @@ interface TrainingPlanDao {
     @Query("SELECT * FROM training_days ORDER BY planId, dayIndex")
     suspend fun getAllDays(): List<TrainingDayEntity>
 
+    @Query("SELECT COALESCE(MAX(dayIndex), -1) FROM training_days WHERE planId = :planId")
+    suspend fun getMaxDayIndex(planId: Long): Int
+
     @Query("SELECT * FROM training_plan_exercises WHERE trainingDayId = :dayId ORDER BY sortOrder")
     suspend fun getExercisesForDay(dayId: Long): List<TrainingPlanExerciseEntity>
 
@@ -45,6 +48,12 @@ interface TrainingPlanDao {
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertDay(day: TrainingDayEntity): Long
+
+    @Update
+    suspend fun updateDay(day: TrainingDayEntity)
+
+    @Delete
+    suspend fun deleteDay(day: TrainingDayEntity)
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertSection(section: TrainingDaySectionEntity): Long

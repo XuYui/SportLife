@@ -150,6 +150,13 @@ fun SportLifeApp(
             val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
             EditTrainingPlanScreen(
                 uiState = uiState,
+                onStartAddDay = viewModel::startAddDay,
+                onStartEditDay = viewModel::startEditDay,
+                onDeleteDay = viewModel::deleteDay,
+                onDayNameChange = viewModel::updateDayName,
+                onDayFocusChange = viewModel::updateDayFocus,
+                onSaveDay = viewModel::saveDayForm,
+                onClearDayForm = viewModel::clearDayForm,
                 onStartAdd = viewModel::startAdd,
                 onStartEdit = viewModel::startEdit,
                 onDeleteExercise = viewModel::deleteExercise,

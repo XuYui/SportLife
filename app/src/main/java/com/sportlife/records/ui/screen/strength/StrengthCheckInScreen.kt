@@ -50,6 +50,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sportlife.records.domain.model.BodyPart
+import com.sportlife.records.domain.model.displayBodyPartName
 import com.sportlife.records.ui.component.AppScaffold
 import com.sportlife.records.ui.theme.EvolveBackground
 import com.sportlife.records.ui.theme.EvolveMuted
@@ -62,7 +63,7 @@ import com.sportlife.records.ui.theme.EvolveSurfaceLow
 fun StrengthCheckInScreen(
     uiState: StrengthCheckInUiState,
     onDateChange: (String) -> Unit,
-    onSplitChange: (BodyPart) -> Unit,
+    onSplitChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
     onSave: () -> Unit,
     onBack: () -> Unit,
@@ -77,7 +78,7 @@ fun StrengthCheckInScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             StrengthHeader(selected = uiState.selectedSplit, splitLabel = uiState.activeSplitLabel)
-            Text("选择本次训练部位", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+            Text("选择本次训练", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -103,7 +104,7 @@ fun StrengthCheckInScreen(
 }
 
 @Composable
-private fun StrengthHeader(selected: BodyPart, splitLabel: String) {
+private fun StrengthHeader(selected: String, splitLabel: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
@@ -126,13 +127,13 @@ private fun StrengthHeader(selected: BodyPart, splitLabel: String) {
                     label = "selected-split",
                 ) { part ->
                     Text(
-                        text = "${part.label}训练",
+                        text = "${displayBodyPartName(part)}训练",
                         color = EvolveNeon,
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.ExtraBold,
                     )
                 }
-                Text("打卡选项会跟随当前健身计划的分化方式。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("选项会跟随当前健身计划，包括自定义分化。", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Box(
                 modifier = Modifier
@@ -148,7 +149,7 @@ private fun StrengthHeader(selected: BodyPart, splitLabel: String) {
 
 @Composable
 private fun SplitOptionCard(
-    part: BodyPart,
+    part: String,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -190,7 +191,7 @@ private fun SplitOptionCard(
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(part.label, color = contentColor, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                Text(displayBodyPartName(part), color = contentColor, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
                 Text(
                     splitHint(part),
                     color = if (selected) EvolveBackground.copy(alpha = 0.72f) else EvolveMuted,
@@ -252,18 +253,19 @@ private fun CheckInFormCard(
                 colors = ButtonDefaults.buttonColors(containerColor = EvolveNeon, contentColor = EvolveBackground),
             ) {
                 Icon(Icons.Default.Save, contentDescription = null)
-                Text("保存 ${uiState.selectedSplit.label} 训练", modifier = Modifier.padding(start = 8.dp), fontWeight = FontWeight.ExtraBold)
+                Text("保存 ${displayBodyPartName(uiState.selectedSplit)} 训练", modifier = Modifier.padding(start = 8.dp), fontWeight = FontWeight.ExtraBold)
             }
         }
     }
 }
 
-private fun splitHint(part: BodyPart): String =
-    when (part) {
+private fun splitHint(part: String): String =
+    when (BodyPart.entries.firstOrNull { it.name == part || it.label == part }) {
         BodyPart.Back -> "引体、划船、高位下拉"
         BodyPart.Chest -> "卧推、飞鸟、推举"
         BodyPart.Legs -> "深蹲、腿举、硬拉"
         BodyPart.Arms -> "二头、三头、肩臂"
+        null -> "跟随当前计划的自定义分化"
     }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)

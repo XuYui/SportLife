@@ -43,7 +43,6 @@ import com.sportlife.records.domain.model.BuiltInSportTypes
 import com.sportlife.records.domain.util.formatForDisplay
 import com.sportlife.records.domain.util.toLocalDate
 import com.sportlife.records.ui.component.AppScaffold
-import com.sportlife.records.ui.screen.strength.BodyPartChips
 import com.sportlife.records.ui.theme.EvolveBackground
 import com.sportlife.records.ui.theme.EvolveNeon
 import com.sportlife.records.ui.theme.EvolveSurfaceHigh
@@ -63,7 +62,7 @@ fun HistoryScreen(
     onEditNoteChange: (String) -> Unit,
     onEditDistanceChange: (String) -> Unit,
     onEditPaceChange: (String) -> Unit,
-    onEditBodyPartChange: (com.sportlife.records.domain.model.BodyPart) -> Unit,
+    onEditBodyPartChange: (String) -> Unit,
     onSaveEdit: () -> Unit,
     onCancelEdit: () -> Unit,
     onBack: () -> Unit,
@@ -301,7 +300,7 @@ private fun EditRecordDialog(
     onNoteChange: (String) -> Unit,
     onDistanceChange: (String) -> Unit,
     onPaceChange: (String) -> Unit,
-    onBodyPartChange: (com.sportlife.records.domain.model.BodyPart) -> Unit,
+    onBodyPartChange: (String) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -336,8 +335,14 @@ private fun EditRecordDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 } else {
-                    Text("四分化类型", fontWeight = FontWeight.SemiBold)
-                    BodyPartChips(selected = edit.bodyPart, onSelected = onBodyPartChange)
+                    Text("训练部位", fontWeight = FontWeight.SemiBold)
+                    OutlinedTextField(
+                        value = edit.bodyPart,
+                        onValueChange = onBodyPartChange,
+                        label = { Text("训练部位") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
                 OutlinedTextField(
                     value = edit.note,

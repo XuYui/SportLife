@@ -3,8 +3,8 @@ package com.sportlife.records.data.local
 import androidx.room.withTransaction
 import com.sportlife.records.data.local.entity.ExerciseEntity
 import com.sportlife.records.data.local.entity.ExerciseGroupEntity
-import com.sportlife.records.data.local.entity.TrainingDaySectionEntity
 import com.sportlife.records.data.local.entity.TrainingDayEntity
+import com.sportlife.records.data.local.entity.TrainingDaySectionEntity
 import com.sportlife.records.data.local.entity.TrainingPlanEntity
 import com.sportlife.records.data.local.entity.TrainingPlanExerciseEntity
 import com.sportlife.records.data.local.entity.toEntity
@@ -72,22 +72,25 @@ class DefaultDataSeeder(
         val dayNames = when (split) {
             TrainingSplitType.ThreeDay -> listOf("第 1 天 背部", "第 2 天 胸和手臂", "第 3 天 腿部")
             TrainingSplitType.FourDay -> listOf("第 1 天 背部", "第 2 天 胸部", "第 3 天 腿部", "第 4 天 手臂")
+            TrainingSplitType.Custom -> listOf("第 1 天 自定义")
         }
         val focusParts = when (split) {
             TrainingSplitType.ThreeDay -> listOf(BodyPart.Back, BodyPart.Chest, BodyPart.Legs)
             TrainingSplitType.FourDay -> listOf(BodyPart.Back, BodyPart.Chest, BodyPart.Legs, BodyPart.Arms)
+            TrainingSplitType.Custom -> emptyList()
         }
 
         dayNames.forEachIndexed { index, name ->
+            val focusBodyPart = focusParts.getOrNull(index)
             val dayId = database.trainingPlanDao().insertDay(
                 TrainingDayEntity(
                     planId = planId,
                     dayIndex = index,
                     name = name,
-                    focusBodyPart = focusParts[index].name,
+                    focusBodyPart = focusBodyPart?.name ?: "自定义",
                 ),
             )
-            insertStarterSectionsAndExercises(dayId, focusParts[index])
+            focusBodyPart?.let { insertStarterSectionsAndExercises(dayId, it) }
         }
     }
 

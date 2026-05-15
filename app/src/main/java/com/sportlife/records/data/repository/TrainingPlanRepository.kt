@@ -12,13 +12,14 @@ import com.sportlife.records.data.local.entity.toEntity
 import com.sportlife.records.data.local.relation.TrainingPlanWithDays
 import com.sportlife.records.domain.model.BodyPart
 import com.sportlife.records.domain.model.TrainingSplitType
+import com.sportlife.records.domain.model.normalizeCustomFocus
 import kotlinx.coroutines.flow.Flow
 
 data class PlanExerciseInput(
     val trainingDayId: Long,
     val sectionId: Long?,
     val exerciseName: String,
-    val bodyPart: BodyPart,
+    val bodyPart: String,
     val exerciseGroupId: Long?,
     val sets: Int,
     val defaultWeightKg: Double,
@@ -31,7 +32,10 @@ interface TrainingPlanRepository {
     fun observeExerciseGroups(): Flow<List<ExerciseGroupEntity>>
     fun observeExercises(): Flow<List<ExerciseEntity>>
     suspend fun activateNewDefaultPlan(splitType: TrainingSplitType)
-    suspend fun addSection(dayId: Long, name: String, bodyPart: BodyPart?)
+    suspend fun addTrainingDay(planId: Long, name: String, focusBodyPart: String?)
+    suspend fun updateTrainingDay(day: TrainingDayEntity)
+    suspend fun deleteTrainingDay(day: TrainingDayEntity)
+    suspend fun addSection(dayId: Long, name: String, bodyPart: String?)
     suspend fun deleteSection(section: TrainingDaySectionEntity)
     suspend fun addPlanExercise(input: PlanExerciseInput)
     suspend fun updatePlanExercise(exercise: TrainingPlanExerciseEntity)
@@ -67,6 +71,7 @@ class OfflineTrainingPlanRepository(
             val focusParts = when (splitType) {
                 TrainingSplitType.ThreeDay -> listOf(BodyPart.Back, BodyPart.Chest, BodyPart.Legs)
                 TrainingSplitType.FourDay -> listOf(BodyPart.Back, BodyPart.Chest, BodyPart.Legs, BodyPart.Arms)
+                TrainingSplitType.Custom -> emptyList()
             }
             focusParts.forEachIndexed { index, bodyPart ->
                 val dayId = trainingPlanDao.insertDay(
@@ -79,15 +84,50 @@ class OfflineTrainingPlanRepository(
                 )
                 insertDefaultSectionsAndExercises(dayId, bodyPart)
             }
+            if (splitType == TrainingSplitType.Custom) {
+                trainingPlanDao.insertDay(
+                    TrainingDayEntity(
+                        planId = planId,
+                        dayIndex = 0,
+                        name = "第 1 天 自定义",
+                        focusBodyPart = "自定义",
+                    ),
+                )
+            }
         }
     }
 
-    override suspend fun addSection(dayId: Long, name: String, bodyPart: BodyPart?) {
+    override suspend fun addTrainingDay(planId: Long, name: String, focusBodyPart: String?) {
+        val nextIndex = trainingPlanDao.getMaxDayIndex(planId) + 1
+        trainingPlanDao.insertDay(
+            TrainingDayEntity(
+                planId = planId,
+                dayIndex = nextIndex,
+                name = name.ifBlank { "第 ${nextIndex + 1} 天" },
+                focusBodyPart = focusBodyPart?.takeIf { it.isNotBlank() }?.let(::normalizeCustomFocus),
+            ),
+        )
+    }
+
+    override suspend fun updateTrainingDay(day: TrainingDayEntity) {
+        trainingPlanDao.updateDay(
+            day.copy(
+                name = day.name.ifBlank { "训练日" },
+                focusBodyPart = day.focusBodyPart?.let(::normalizeCustomFocus),
+            ),
+        )
+    }
+
+    override suspend fun deleteTrainingDay(day: TrainingDayEntity) {
+        trainingPlanDao.deleteDay(day)
+    }
+
+    override suspend fun addSection(dayId: Long, name: String, bodyPart: String?) {
         trainingPlanDao.insertSection(
             TrainingDaySectionEntity(
                 trainingDayId = dayId,
                 name = name,
-                bodyPart = bodyPart?.name,
+                bodyPart = bodyPart?.takeIf { it.isNotBlank() }?.let(::normalizeCustomFocus),
                 sortOrder = (System.currentTimeMillis() % 10_000).toInt(),
             ),
         )
@@ -107,7 +147,7 @@ class OfflineTrainingPlanRepository(
                 sectionId = input.sectionId,
                 exerciseGroupId = input.exerciseGroupId,
                 exerciseName = input.exerciseName,
-                bodyPart = input.bodyPart.name,
+                bodyPart = normalizeCustomFocus(input.bodyPart),
                 sets = input.sets,
                 defaultWeightKg = input.defaultWeightKg,
                 defaultReps = input.defaultReps,
@@ -117,7 +157,7 @@ class OfflineTrainingPlanRepository(
     }
 
     override suspend fun updatePlanExercise(exercise: TrainingPlanExerciseEntity) {
-        trainingPlanDao.updatePlanExercise(exercise)
+        trainingPlanDao.updatePlanExercise(exercise.copy(bodyPart = normalizeCustomFocus(exercise.bodyPart)))
     }
 
     override suspend fun deletePlanExercise(exercise: TrainingPlanExerciseEntity) {

@@ -13,6 +13,8 @@ import com.sportlife.records.data.local.relation.StrengthBodyPartCountRow
 import com.sportlife.records.data.local.relation.WorkoutWithSportType
 import com.sportlife.records.domain.model.BodyPart
 import com.sportlife.records.domain.model.BuiltInSportTypes
+import com.sportlife.records.domain.model.displayBodyPartName
+import com.sportlife.records.domain.model.normalizeCustomFocus
 import com.sportlife.records.domain.util.formatPace
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
@@ -39,7 +41,7 @@ data class StrengthExerciseInput(
 
 data class StrengthCheckInInput(
     val date: LocalDate,
-    val primaryBodyPart: BodyPart,
+    val primaryBodyPart: String,
     val exercises: List<StrengthExerciseInput> = emptyList(),
     val note: String,
 )
@@ -140,10 +142,12 @@ class OfflineWorkoutRepository(
         database.withTransaction {
             database.sportTypeDao().upsertAll(BuiltInSportTypes.all.map { it.toEntity() })
             val totalSets = input.exercises.sumOf { it.sets.size }
+            val primaryBodyPart = normalizeCustomFocus(input.primaryBodyPart)
+            val primaryBodyPartLabel = displayBodyPartName(primaryBodyPart)
             val summary = if (input.exercises.isEmpty()) {
-                "四分化 · ${input.primaryBodyPart.label}训练"
+                "$primaryBodyPartLabel 训练"
             } else {
-                "${input.primaryBodyPart.label}训练 ${input.exercises.size} 个动作 / $totalSets 组"
+                "$primaryBodyPartLabel 训练 ${input.exercises.size} 个动作 / $totalSets 组"
             }
             val checkInId = workoutDao.insertCheckIn(
                 WorkoutCheckInEntity(
@@ -156,7 +160,7 @@ class OfflineWorkoutRepository(
             val strengthRecordId = strengthDao.insertStrengthRecord(
                 StrengthRecordEntity(
                     checkInId = checkInId,
-                    primaryBodyPart = input.primaryBodyPart.name,
+                    primaryBodyPart = primaryBodyPart,
                     note = input.note,
                 ),
             )
@@ -189,17 +193,18 @@ class OfflineWorkoutRepository(
         database.withTransaction {
             val checkIn = workoutDao.getCheckIn(checkInId) ?: return@withTransaction
             val strength = workoutDao.getStrengthRecord(checkInId) ?: return@withTransaction
+            val primaryBodyPart = normalizeCustomFocus(input.primaryBodyPart)
             workoutDao.updateCheckIn(
                 checkIn.copy(
                     dateEpochDay = input.date.toEpochDay(),
-                    summary = "四分化 · ${input.primaryBodyPart.label}训练",
+                    summary = "${displayBodyPartName(primaryBodyPart)} 训练",
                     note = input.note,
                     updatedAtMillis = System.currentTimeMillis(),
                 ),
             )
             workoutDao.updateStrengthRecord(
                 strength.copy(
-                    primaryBodyPart = input.primaryBodyPart.name,
+                    primaryBodyPart = primaryBodyPart,
                     note = input.note,
                 ),
             )

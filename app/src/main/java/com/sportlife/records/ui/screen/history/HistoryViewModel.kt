@@ -8,6 +8,7 @@ import com.sportlife.records.data.repository.StrengthCheckInInput
 import com.sportlife.records.data.repository.WorkoutRepository
 import com.sportlife.records.domain.model.BodyPart
 import com.sportlife.records.domain.model.BuiltInSportTypes
+import com.sportlife.records.domain.model.displayBodyPartName
 import com.sportlife.records.domain.util.formatForInput
 import com.sportlife.records.domain.util.formatPace
 import com.sportlife.records.domain.util.parseInputDate
@@ -30,7 +31,7 @@ data class HistoryEditState(
     val note: String,
     val distanceKm: String = "",
     val pace: String = "",
-    val bodyPart: BodyPart = BodyPart.Back,
+    val bodyPart: String = displayBodyPartName(BodyPart.Back.name),
     val message: String? = null,
 )
 
@@ -110,7 +111,7 @@ class HistoryViewModel(
                         title = "编辑健身记录",
                         date = LocalDate.ofEpochDay(checkIn.dateEpochDay).formatForInput(),
                         note = checkIn.note,
-                        bodyPart = BodyPart.fromName(strength?.primaryBodyPart ?: BodyPart.Back.name),
+                        bodyPart = displayBodyPartName(strength?.primaryBodyPart ?: BodyPart.Back.name),
                     )
                 }
             }
@@ -125,7 +126,7 @@ class HistoryViewModel(
     fun updateEditNote(value: String) = editing.update { it?.copy(note = value, message = null) }
     fun updateEditDistance(value: String) = editing.update { it?.copy(distanceKm = value, message = null) }
     fun updateEditPace(value: String) = editing.update { it?.copy(pace = value, message = null) }
-    fun updateEditBodyPart(value: BodyPart) = editing.update { it?.copy(bodyPart = value, message = null) }
+    fun updateEditBodyPart(value: String) = editing.update { it?.copy(bodyPart = value, message = null) }
 
     fun saveEdit() {
         val state = editing.value ?: return

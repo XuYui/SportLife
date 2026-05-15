@@ -4,8 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sportlife.records.data.local.relation.RunningStatRow
 import com.sportlife.records.data.local.relation.StrengthBodyPartCountRow
+import com.sportlife.records.data.local.relation.TrainingPlanWithDays
+import com.sportlife.records.data.repository.TrainingPlanRepository
 import com.sportlife.records.data.repository.WorkoutRepository
-import com.sportlife.records.domain.model.BodyPart
+import com.sportlife.records.domain.model.defaultBodyPartValues
+import com.sportlife.records.domain.model.displayBodyPartName
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -34,21 +37,23 @@ data class StatsUiState(
     val runningPoints: List<RunningChartPoint> = emptyList(),
     val weeklyRunning: List<BarChartValue> = emptyList(),
     val monthlyRunning: List<BarChartValue> = emptyList(),
-    val strengthFrequency: List<RadarChartValue> = BodyPart.entries.map { RadarChartValue(it.label, 0.0) },
+    val strengthFrequency: List<RadarChartValue> = defaultBodyPartValues().map { RadarChartValue(displayBodyPartName(it), 0.0) },
 )
 
 class StatsViewModel(
     workoutRepository: WorkoutRepository,
+    trainingPlanRepository: TrainingPlanRepository,
 ) : ViewModel() {
     val uiState = combine(
         workoutRepository.observeRunningStats(),
         workoutRepository.observeStrengthBodyPartCounts(),
-    ) { runningRows, strengthRows ->
+        trainingPlanRepository.observeActivePlan(),
+    ) { runningRows, strengthRows, activePlan ->
         StatsUiState(
             runningPoints = runningRows.mapToRunningPoints(),
             weeklyRunning = runningRows.toWeeklyVolumes(),
             monthlyRunning = runningRows.toMonthlyVolumes(),
-            strengthFrequency = strengthRows.toRadarValues(),
+            strengthFrequency = strengthRows.toRadarValues(activePlan),
         )
     }.stateIn(
         scope = viewModelScope,
@@ -96,12 +101,19 @@ private fun List<RunningStatRow>.toMonthlyVolumes(): List<BarChartValue> =
             )
         }
 
-private fun List<StrengthBodyPartCountRow>.toRadarValues(): List<RadarChartValue> {
-    val counts = associate { BodyPart.fromName(it.bodyPart) to it.count }
-    return BodyPart.entries.map { part ->
-        RadarChartValue(
-            label = part.label,
-            value = (counts[part] ?: 0).toDouble(),
-        )
+private fun List<StrengthBodyPartCountRow>.toRadarValues(activePlan: TrainingPlanWithDays?): List<RadarChartValue> {
+    val countsByLabel = groupBy { displayBodyPartName(it.bodyPart) }
+        .mapValues { entry -> entry.value.sumOf { it.count }.toDouble() }
+    val planLabels = activePlan
+        ?.days
+        ?.sortedBy { it.day.dayIndex }
+        ?.map { displayBodyPartName(it.day.focusBodyPart?.takeIf(String::isNotBlank) ?: it.day.name) }
+        .orEmpty()
+    val labels = (planLabels + countsByLabel.keys)
+        .distinct()
+        .takeIf { it.isNotEmpty() }
+        ?: defaultBodyPartValues().map(::displayBodyPartName)
+    return labels.take(8).map { label ->
+        RadarChartValue(label = label, value = countsByLabel[label] ?: 0.0)
     }
 }

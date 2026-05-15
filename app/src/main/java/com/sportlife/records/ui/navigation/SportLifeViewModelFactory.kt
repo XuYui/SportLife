@@ -32,7 +32,7 @@ class SportLifeViewModelFactory(
             modelClass.isAssignableFrom(HistoryViewModel::class.java) ->
                 HistoryViewModel(appContainer.workoutRepository)
             modelClass.isAssignableFrom(StatsViewModel::class.java) ->
-                StatsViewModel(appContainer.workoutRepository)
+                StatsViewModel(appContainer.workoutRepository, appContainer.trainingPlanRepository)
             modelClass.isAssignableFrom(DataMigrationViewModel::class.java) ->
                 DataMigrationViewModel(appContainer.dataBackupRepository)
             else -> error("Unknown ViewModel: ${modelClass.name}")

@@ -7,12 +7,13 @@ import com.sportlife.records.data.repository.TrainingPlanRepository
 import com.sportlife.records.data.repository.WorkoutRepository
 import com.sportlife.records.domain.model.BodyPart
 import com.sportlife.records.domain.model.TrainingSplitType
+import com.sportlife.records.domain.model.defaultBodyPartValues
 import com.sportlife.records.domain.util.formatForInput
 import com.sportlife.records.domain.util.parseInputDate
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -20,8 +21,8 @@ import java.time.LocalDate
 
 data class StrengthCheckInUiState(
     val date: String = LocalDate.now().formatForInput(),
-    val selectedSplit: BodyPart = BodyPart.Back,
-    val availableSplits: List<BodyPart> = BodyPart.entries.toList(),
+    val selectedSplit: String = BodyPart.Back.name,
+    val availableSplits: List<String> = defaultBodyPartValues(),
     val activeSplitLabel: String = "默认分化",
     val note: String = "",
     val isSaving: Boolean = false,
@@ -40,10 +41,10 @@ class StrengthCheckInViewModel(
         val availableSplits = activePlan
             ?.days
             ?.sortedBy { it.day.dayIndex }
-            ?.mapNotNull { it.day.focusBodyPart?.let(BodyPart::fromName) }
+            ?.map { it.day.focusBodyPart?.takeIf(String::isNotBlank) ?: it.day.name }
             ?.distinct()
             ?.takeIf { it.isNotEmpty() }
-            ?: BodyPart.entries.toList()
+            ?: defaultBodyPartValues()
         val selected = if (form.selectedSplit in availableSplits) {
             form.selectedSplit
         } else {
@@ -61,7 +62,7 @@ class StrengthCheckInViewModel(
     )
 
     fun updateDate(value: String) = formState.update { it.copy(date = value, message = null) }
-    fun updateSelectedSplit(value: BodyPart) = formState.update { it.copy(selectedSplit = value, message = null) }
+    fun updateSelectedSplit(value: String) = formState.update { it.copy(selectedSplit = value, message = null) }
     fun updateNote(value: String) = formState.update { it.copy(note = value, message = null) }
 
     fun save(onSaved: () -> Unit) {
