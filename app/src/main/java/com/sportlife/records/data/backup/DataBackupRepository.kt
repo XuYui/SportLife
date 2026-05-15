@@ -16,6 +16,7 @@ data class BackupImportResult(
 class DataBackupRepository(
     private val database: SportLifeDatabase,
     private val userPreferencesRepository: UserPreferencesRepository,
+    private val trainingPlanSnapshotRepository: TrainingPlanSnapshotRepository,
 ) {
     suspend fun exportJson(): String =
         database.withTransaction {
@@ -27,7 +28,9 @@ class DataBackupRepository(
                 .put("exportedAtMillis", System.currentTimeMillis())
                 .put(
                     "preferences",
-                    JSONObject().put("homeSlogan", userPreferencesRepository.currentHomeSlogan()),
+                    JSONObject()
+                        .put("homeSlogan", userPreferencesRepository.currentHomeSlogan())
+                        .put("trainingPlanSnapshot", trainingPlanSnapshotRepository.currentSnapshotJson()),
                 )
                 .put(
                     "tables",
@@ -68,10 +71,20 @@ class DataBackupRepository(
                 }
                 db.execSQL("PRAGMA foreign_keys=ON")
                 DefaultDataSeeder(database).seedIfNeeded()
+                val importedPlanRows = tables.optJSONArray("training_plans")?.length() ?: 0
+                val importedPlanSnapshot = preferences
+                    ?.optString("trainingPlanSnapshot")
+                    ?.takeIf { it.isNotBlank() }
                 preferences
                     ?.optString("homeSlogan")
                     ?.takeIf { it.isNotBlank() }
                     ?.let(userPreferencesRepository::saveHomeSlogan)
+                importedPlanSnapshot?.let(trainingPlanSnapshotRepository::saveSnapshotJson)
+                if (importedPlanRows == 0 && importedPlanSnapshot != null) {
+                    trainingPlanSnapshotRepository.restoreSnapshotIfNeeded()
+                } else {
+                    trainingPlanSnapshotRepository.saveActivePlanSnapshot()
+                }
                 BackupImportResult(importedTables = importedTables, importedRows = importedRows)
             } catch (throwable: Throwable) {
                 db.execSQL("PRAGMA foreign_keys=ON")

@@ -12,8 +12,8 @@ android {
         applicationId = "com.sportlife.records"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "2.0-custom-plan"
+        versionCode = 12
+        versionName = "2.1-plan-snapshot"
     }
 
     buildFeatures {

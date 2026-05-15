@@ -22,6 +22,10 @@ interface TrainingPlanDao {
     @Query("SELECT * FROM training_plans WHERE isActive = 1 ORDER BY updatedAtMillis DESC LIMIT 1")
     fun observeActivePlan(): Flow<TrainingPlanWithDays?>
 
+    @Transaction
+    @Query("SELECT * FROM training_plans WHERE isActive = 1 ORDER BY updatedAtMillis DESC LIMIT 1")
+    suspend fun getActivePlan(): TrainingPlanWithDays?
+
     @Query("SELECT COUNT(*) FROM training_plans")
     suspend fun planCount(): Int
 

@@ -89,7 +89,7 @@ fun DataMigrationScreen(
             MigrationHero()
             ActionCard(
                 title = "导出完整备份",
-                description = "把打卡记录、跑步详情、健身计划、动作库和小板块保存成 JSON 文件。",
+                description = "把打卡记录、跑步详情、健身计划、计划快照、动作库和小板块保存成 JSON 文件。",
                 icon = { Icon(Icons.Default.FileDownload, contentDescription = null) },
             ) {
                 Button(
@@ -122,7 +122,7 @@ fun DataMigrationScreen(
                 Text(uiState.message, color = MaterialTheme.colorScheme.primary)
             }
             Text(
-                "提示：正常覆盖安装同一个应用不会清空数据；卸载重装、换手机、调试签名变化前，请先导出备份。",
+                "提示：正常覆盖安装会保留本地数据；训练计划也会自动保存快照。卸载重装、换手机、调试签名变化前，请先导出备份。",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
             )

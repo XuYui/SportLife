@@ -1,6 +1,7 @@
 package com.sportlife.records.data.repository
 
 import androidx.room.withTransaction
+import com.sportlife.records.data.backup.TrainingPlanSnapshotRepository
 import com.sportlife.records.data.local.SportLifeDatabase
 import com.sportlife.records.data.local.entity.ExerciseEntity
 import com.sportlife.records.data.local.entity.ExerciseGroupEntity
@@ -44,6 +45,7 @@ interface TrainingPlanRepository {
 
 class OfflineTrainingPlanRepository(
     private val database: SportLifeDatabase,
+    private val trainingPlanSnapshotRepository: TrainingPlanSnapshotRepository? = null,
 ) : TrainingPlanRepository {
     private val trainingPlanDao = database.trainingPlanDao()
     private val exerciseDao = database.exerciseDao()
@@ -95,6 +97,7 @@ class OfflineTrainingPlanRepository(
                 )
             }
         }
+        snapshotActivePlan()
     }
 
     override suspend fun addTrainingDay(planId: Long, name: String, focusBodyPart: String?) {
@@ -107,6 +110,7 @@ class OfflineTrainingPlanRepository(
                 focusBodyPart = focusBodyPart?.takeIf { it.isNotBlank() }?.let(::normalizeCustomFocus),
             ),
         )
+        snapshotActivePlan()
     }
 
     override suspend fun updateTrainingDay(day: TrainingDayEntity) {
@@ -116,10 +120,12 @@ class OfflineTrainingPlanRepository(
                 focusBodyPart = day.focusBodyPart?.let(::normalizeCustomFocus),
             ),
         )
+        snapshotActivePlan()
     }
 
     override suspend fun deleteTrainingDay(day: TrainingDayEntity) {
         trainingPlanDao.deleteDay(day)
+        snapshotActivePlan()
     }
 
     override suspend fun addSection(dayId: Long, name: String, bodyPart: String?) {
@@ -131,6 +137,7 @@ class OfflineTrainingPlanRepository(
                 sortOrder = (System.currentTimeMillis() % 10_000).toInt(),
             ),
         )
+        snapshotActivePlan()
     }
 
     override suspend fun deleteSection(section: TrainingDaySectionEntity) {
@@ -138,6 +145,7 @@ class OfflineTrainingPlanRepository(
             trainingPlanDao.clearSectionFromExercises(section.id)
             trainingPlanDao.deleteSection(section)
         }
+        snapshotActivePlan()
     }
 
     override suspend fun addPlanExercise(input: PlanExerciseInput) {
@@ -154,14 +162,21 @@ class OfflineTrainingPlanRepository(
                 note = input.note,
             ),
         )
+        snapshotActivePlan()
     }
 
     override suspend fun updatePlanExercise(exercise: TrainingPlanExerciseEntity) {
         trainingPlanDao.updatePlanExercise(exercise.copy(bodyPart = normalizeCustomFocus(exercise.bodyPart)))
+        snapshotActivePlan()
     }
 
     override suspend fun deletePlanExercise(exercise: TrainingPlanExerciseEntity) {
         trainingPlanDao.deletePlanExercise(exercise)
+        snapshotActivePlan()
+    }
+
+    private suspend fun snapshotActivePlan() {
+        trainingPlanSnapshotRepository?.saveActivePlanSnapshot()
     }
 
     private suspend fun insertDefaultSectionsAndExercises(dayId: Long, bodyPart: BodyPart) {
