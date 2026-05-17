@@ -2,7 +2,7 @@
 
 SportLife（运动生活记录）是一款离线优先的 Android 运动记录应用，面向日常跑步、力量训练和训练计划管理场景。项目使用 Kotlin、Jetpack Compose、MVVM 和 Room 构建，重点展示移动端本地数据建模、Compose 复杂界面、训练记录闭环和数据迁移能力。
 
-体验 APK 可在 [GitHub Releases](https://github.com/XuYui/SportLife/releases/tag/v2.2-brand-icon) 下载；源码仓库仅保留可复现的工程代码，不提交 APK、AAB、签名文件和本地 SDK 配置。
+体验 APK 可在 [GitHub Releases](https://github.com/XuYui/SportLife/releases/tag/v2.6) 下载；源码仓库仅保留可复现的工程代码，不提交 APK、AAB、签名文件和本地 SDK 配置。
 
 ## 项目亮点
 

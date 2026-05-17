@@ -10,6 +10,7 @@ import com.sportlife.records.domain.model.TrainingSplitType
 import com.sportlife.records.domain.model.defaultBodyPartValues
 import com.sportlife.records.domain.util.formatForInput
 import com.sportlife.records.domain.util.parseInputDate
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -82,11 +83,10 @@ class StrengthCheckInViewModel(
                     note = state.note,
                 ),
             )
-            formState.value = StrengthCheckInUiState(
-                selectedSplit = state.selectedSplit,
-                message = "健身打卡已保存",
-            )
+            formState.update { it.copy(isSaving = false, selectedSplit = state.selectedSplit, message = "健身打卡已保存") }
+            delay(700)
             onSaved()
+            formState.value = StrengthCheckInUiState(selectedSplit = state.selectedSplit)
         }
     }
 }

@@ -206,8 +206,16 @@ class EditTrainingPlanViewModel(
         val dayId = form.trainingDayId
         val name = form.exerciseName.trim()
         val sets = form.sets.toIntOrNull()
-        val weight = form.weightKg.toDoubleOrNull() ?: 0.0
+        val weightInput = form.weightKg.trim()
+        val weight = when {
+            weightInput.isBlank() || weightInput == "自重" -> 0.0
+            else -> weightInput.toDoubleOrNull()
+        }
         val reps = form.reps.toIntOrNull()
+        if (weight == null || weight < 0.0) {
+            formState.update { it.copy(message = "重量请输入数字，或选择自重") }
+            return
+        }
         if (dayId == null || name.isEmpty() || sets == null || sets <= 0 || reps == null || reps <= 0) {
             formState.update { it.copy(message = "请完整填写动作、组数和次数") }
             return

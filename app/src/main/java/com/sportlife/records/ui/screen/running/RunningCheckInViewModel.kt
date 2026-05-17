@@ -7,6 +7,7 @@ import com.sportlife.records.data.repository.WorkoutRepository
 import com.sportlife.records.domain.util.formatForInput
 import com.sportlife.records.domain.util.parseInputDate
 import com.sportlife.records.domain.util.parsePaceSecondsPerKm
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -64,8 +65,10 @@ class RunningCheckInViewModel(
                     note = state.note,
                 ),
             )
-            _uiState.value = RunningCheckInUiState(message = "跑步打卡已保存")
+            _uiState.update { it.copy(isSaving = false, message = "跑步打卡已保存") }
+            delay(700)
             onSaved()
+            _uiState.value = RunningCheckInUiState()
         }
     }
 }

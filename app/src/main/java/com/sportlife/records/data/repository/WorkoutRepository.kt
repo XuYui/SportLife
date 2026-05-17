@@ -10,6 +10,7 @@ import com.sportlife.records.data.local.entity.WorkoutCheckInEntity
 import com.sportlife.records.data.local.entity.toEntity
 import com.sportlife.records.data.local.relation.RunningStatRow
 import com.sportlife.records.data.local.relation.StrengthBodyPartCountRow
+import com.sportlife.records.data.local.relation.StrengthRecordWithExercises
 import com.sportlife.records.data.local.relation.WorkoutWithSportType
 import com.sportlife.records.domain.model.BodyPart
 import com.sportlife.records.domain.model.BuiltInSportTypes
@@ -54,6 +55,7 @@ interface WorkoutRepository {
     fun observeStrengthBodyPartCounts(): Flow<List<StrengthBodyPartCountRow>>
     suspend fun getRunningRecord(checkInId: Long): RunningRecordEntity?
     suspend fun getStrengthRecord(checkInId: Long): StrengthRecordEntity?
+    suspend fun getStrengthRecordWithExercises(checkInId: Long): StrengthRecordWithExercises?
     suspend fun saveRunningCheckIn(input: RunningCheckInInput): Long
     suspend fun saveStrengthCheckIn(input: StrengthCheckInInput): Long
     suspend fun updateRunningCheckIn(checkInId: Long, input: RunningCheckInInput)
@@ -87,6 +89,9 @@ class OfflineWorkoutRepository(
 
     override suspend fun getStrengthRecord(checkInId: Long): StrengthRecordEntity? =
         workoutDao.getStrengthRecord(checkInId)
+
+    override suspend fun getStrengthRecordWithExercises(checkInId: Long): StrengthRecordWithExercises? =
+        strengthDao.getStrengthRecordWithExercises(checkInId)
 
     override suspend fun saveRunningCheckIn(input: RunningCheckInInput): Long =
         database.withTransaction {

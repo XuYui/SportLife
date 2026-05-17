@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -40,10 +39,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sportlife.records.ui.component.AppScaffold
+import com.sportlife.records.ui.component.AppDateField
+import com.sportlife.records.ui.component.DecimalStepperField
+import com.sportlife.records.ui.component.PaceQuickField
+import com.sportlife.records.ui.component.SaveFeedbackMessage
 import com.sportlife.records.ui.theme.EvolveBackground
 import com.sportlife.records.ui.theme.EvolveMuted
 import com.sportlife.records.ui.theme.EvolveNeon
@@ -212,29 +214,22 @@ private fun RunningFormCard(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text("填写跑步信息", color = EvolveMuted, style = MaterialTheme.typography.labelLarge)
-            OutlinedTextField(
+            DecimalStepperField(
                 value = uiState.distanceKm,
                 onValueChange = onDistanceChange,
-                label = { Text("公里数") },
-                suffix = { Text("km") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth(),
+                label = "公里数",
+                unit = "km",
+                step = 0.5,
+                quickValues = listOf(3.0, 5.0, 8.0, 10.0),
             )
-            OutlinedTextField(
+            PaceQuickField(
                 value = uiState.pace,
                 onValueChange = onPaceChange,
-                label = { Text("配速") },
-                placeholder = { Text("5'30\"/km") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(
+            AppDateField(
                 value = uiState.date,
                 onValueChange = onDateChange,
-                label = { Text("日期") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                label = "日期",
             )
             OutlinedTextField(
                 value = uiState.note,
@@ -248,7 +243,7 @@ private fun RunningFormCard(
                 enter = fadeIn(),
                 exit = fadeOut(),
             ) {
-                Text(uiState.message.orEmpty(), color = EvolveNeon, fontWeight = FontWeight.Bold)
+                SaveFeedbackMessage(uiState.message)
             }
             Button(
                 onClick = onSave,

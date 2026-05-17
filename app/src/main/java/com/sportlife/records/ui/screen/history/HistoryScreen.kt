@@ -1,6 +1,9 @@
 package com.sportlife.records.ui.screen.history
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,7 +24,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -40,15 +45,23 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.sportlife.records.data.local.relation.WorkoutWithSportType
 import com.sportlife.records.domain.model.BuiltInSportTypes
+import com.sportlife.records.domain.model.displayBodyPartName
 import com.sportlife.records.domain.util.formatForDisplay
+import com.sportlife.records.domain.util.formatPace
 import com.sportlife.records.domain.util.toLocalDate
 import com.sportlife.records.ui.component.AppScaffold
+import com.sportlife.records.ui.component.AppDateField
+import com.sportlife.records.ui.component.DecimalStepperField
+import com.sportlife.records.ui.component.PaceQuickField
+import com.sportlife.records.ui.component.SaveFeedbackMessage
 import com.sportlife.records.ui.theme.EvolveBackground
+import com.sportlife.records.ui.theme.EvolveMuted
 import com.sportlife.records.ui.theme.EvolveNeon
 import com.sportlife.records.ui.theme.EvolveSurfaceHigh
 import com.sportlife.records.ui.theme.EvolveSurfaceLow
 import java.time.LocalDate
 import java.time.YearMonth
+import java.util.Locale
 
 @Composable
 fun HistoryScreen(
@@ -86,10 +99,19 @@ fun HistoryScreen(
                 )
             }
             item {
-                Text(
-                    "${uiState.selectedDate.formatForDisplay()} 的记录",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                AnimatedVisibility(
+                    visible = uiState.feedback != null,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                ) {
+                    SaveFeedbackMessage(uiState.feedback)
+                }
+            }
+            item {
+                DailyDetailSummary(
+                    selectedDate = uiState.selectedDate,
+                    records = uiState.recordsForSelectedDate,
+                    details = uiState.detailsByCheckInId,
                 )
             }
             if (uiState.recordsForSelectedDate.isEmpty()) {
@@ -100,6 +122,7 @@ fun HistoryScreen(
                 items(uiState.recordsForSelectedDate, key = { it.checkIn.id }) { record ->
                     EditableHistoryRecordCard(
                         record = record,
+                        detail = uiState.detailsByCheckInId[record.checkIn.id],
                         onEdit = { onEdit(record) },
                         onDelete = { onDelete(record) },
                     )
@@ -252,8 +275,79 @@ private fun CalendarDayCell(
 }
 
 @Composable
+private fun DailyDetailSummary(
+    selectedDate: LocalDate,
+    records: List<WorkoutWithSportType>,
+    details: Map<Long, HistoryRecordDetail>,
+) {
+    val runningDistance = records
+        .filter { it.sportType.id == BuiltInSportTypes.Running.id }
+        .sumOf { details[it.checkIn.id]?.distanceKm ?: 0.0 }
+    val strengthParts = records
+        .filter { it.sportType.id == BuiltInSportTypes.StrengthTraining.id }
+        .mapNotNull { details[it.checkIn.id]?.primaryBodyPart }
+        .map(::displayBodyPartName)
+        .distinct()
+    val totalStrengthSets = records.sumOf { details[it.checkIn.id]?.totalSets ?: 0 }
+
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = EvolveSurfaceLow),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                "${selectedDate.formatForDisplay()} 的详情",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (records.isEmpty()) {
+                Text("这一天还没有打卡", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    DetailMetric("记录", "${records.size}", "条", Modifier.weight(1f))
+                    DetailMetric("跑步", formatDistance(runningDistance), "km", Modifier.weight(1f))
+                    DetailMetric("健身", if (totalStrengthSets > 0) "$totalStrengthSets" else "${strengthParts.size}", if (totalStrengthSets > 0) "组" else "项", Modifier.weight(1f))
+                }
+                if (strengthParts.isNotEmpty()) {
+                    Text("训练部位：${strengthParts.joinToString(" / ")}", color = EvolveMuted)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailMetric(
+    title: String,
+    value: String,
+    unit: String,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = EvolveSurfaceHigh),
+    ) {
+        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, color = EvolveMuted, style = MaterialTheme.typography.labelSmall)
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(value, fontWeight = FontWeight.ExtraBold, color = EvolveNeon)
+                Text(unit, modifier = Modifier.padding(start = 3.dp, bottom = 1.dp), color = EvolveMuted, style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+}
+
+@Composable
 private fun EditableHistoryRecordCard(
     record: WorkoutWithSportType,
+    detail: HistoryRecordDetail?,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -275,7 +369,19 @@ private fun EditableHistoryRecordCard(
                 Text(record.sportType.displayName, fontWeight = FontWeight.SemiBold)
                 Text(record.checkIn.dateEpochDay.toLocalDate().formatForDisplay(), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(record.checkIn.summary)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    if (record.sportType.id == BuiltInSportTypes.Running.id) Icons.Default.DirectionsRun else Icons.Default.FitnessCenter,
+                    contentDescription = null,
+                    tint = EvolveNeon,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(record.checkIn.summary, fontWeight = FontWeight.Medium)
+            }
+            when (record.sportType.id) {
+                BuiltInSportTypes.Running.id -> RunningRecordDetail(detail)
+                BuiltInSportTypes.StrengthTraining.id -> StrengthRecordDetail(detail)
+            }
             if (record.checkIn.note.isNotBlank()) {
                 Text(record.checkIn.note, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -287,6 +393,64 @@ private fun EditableHistoryRecordCard(
                 TextButton(onClick = onDelete) {
                     Icon(Icons.Default.Delete, contentDescription = null)
                     Text("删除")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RunningRecordDetail(detail: HistoryRecordDetail?) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+        DetailMetric(
+            title = "里程",
+            value = detail?.distanceKm?.let(::formatDistance) ?: "--",
+            unit = "km",
+            modifier = Modifier.weight(1f),
+        )
+        DetailMetric(
+            title = "配速",
+            value = detail?.paceSecondsPerKm?.let(::formatPace)?.takeIf { it != "-" } ?: "未记录",
+            unit = "",
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun StrengthRecordDetail(detail: HistoryRecordDetail?) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "训练部位：${displayBodyPartName(detail?.primaryBodyPart)}",
+            color = EvolveMuted,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        if (detail == null || detail.exercises.isEmpty()) {
+            Text("未记录具体动作", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+        } else {
+            detail.exercises.forEach { exercise ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(EvolveSurfaceHigh, RoundedCornerShape(8.dp))
+                        .padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(exercise.name, fontWeight = FontWeight.SemiBold)
+                        Text(exercise.bodyPart, color = EvolveMuted)
+                    }
+                    Text(
+                        exercise.sets.takeIf { it.isNotEmpty() }?.joinToString(" / ") { set ->
+                            val weight = if (set.weightKg > 0.0) "${formatDistance(set.weightKg)}kg" else "自重"
+                            "$weight x ${set.reps}"
+                        } ?: "未记录组数",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    if (exercise.note.isNotBlank()) {
+                        Text(exercise.note, color = EvolveMuted, style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
             }
         }
@@ -309,30 +473,23 @@ private fun EditRecordDialog(
         title = { Text(edit.title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
+                AppDateField(
                     value = edit.date,
                     onValueChange = onDateChange,
-                    label = { Text("日期") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    label = "日期",
                 )
                 if (edit.sportTypeId == BuiltInSportTypes.Running.id) {
-                    OutlinedTextField(
+                    DecimalStepperField(
                         value = edit.distanceKm,
                         onValueChange = onDistanceChange,
-                        label = { Text("公里数") },
-                        suffix = { Text("km") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.fillMaxWidth(),
+                        label = "公里数",
+                        unit = "km",
+                        step = 0.5,
+                        quickValues = listOf(3.0, 5.0, 8.0, 10.0),
                     )
-                    OutlinedTextField(
+                    PaceQuickField(
                         value = edit.pace,
                         onValueChange = onPaceChange,
-                        label = { Text("配速") },
-                        placeholder = { Text("5'30\"/km") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
                     )
                 } else {
                     Text("训练部位", fontWeight = FontWeight.SemiBold)
@@ -368,3 +525,8 @@ private fun EditRecordDialog(
         },
     )
 }
+
+private fun formatDistance(value: Double): String =
+    String.format(Locale.US, "%.2f", value)
+        .trimEnd('0')
+        .trimEnd('.')

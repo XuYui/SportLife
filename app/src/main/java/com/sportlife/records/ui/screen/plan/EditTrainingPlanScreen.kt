@@ -498,13 +498,9 @@ private fun PlanExerciseFormDialog(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.weight(1f),
             )
-            OutlinedTextField(
+            WeightField(
                 value = form.weightKg,
                 onValueChange = onWeightChange,
-                label = { Text("重量") },
-                suffix = { Text("kg") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.weight(1f),
             )
             OutlinedTextField(
@@ -525,6 +521,38 @@ private fun PlanExerciseFormDialog(
         if (form.message != null) {
             Text(form.message, color = MaterialTheme.colorScheme.error)
         }
+    }
+}
+
+@Composable
+private fun WeightField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text("重量") },
+            placeholder = { Text("自重") },
+            suffix = {
+                if (value.isNotBlank()) {
+                    Text("kg")
+                }
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        FocusChip(
+            label = "自重",
+            selected = value.isBlank(),
+            onClick = { onValueChange("") },
+        )
     }
 }
 

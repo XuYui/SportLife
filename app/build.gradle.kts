@@ -12,8 +12,8 @@ android {
         applicationId = "com.sportlife.records"
         minSdk = 26
         targetSdk = 36
-        versionCode = 13
-        versionName = "2.2-brand-icon"
+        versionCode = 17
+        versionName = "2.6"
     }
 
     buildFeatures {

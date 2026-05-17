@@ -17,8 +17,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
@@ -35,11 +37,35 @@ data class HistoryEditState(
     val message: String? = null,
 )
 
+data class HistoryExerciseSetDetail(
+    val weightKg: Double,
+    val reps: Int,
+)
+
+data class HistoryExerciseDetail(
+    val name: String,
+    val bodyPart: String,
+    val sets: List<HistoryExerciseSetDetail>,
+    val note: String,
+)
+
+data class HistoryRecordDetail(
+    val distanceKm: Double? = null,
+    val paceSecondsPerKm: Int? = null,
+    val primaryBodyPart: String? = null,
+    val exercises: List<HistoryExerciseDetail> = emptyList(),
+) {
+    val totalSets: Int
+        get() = exercises.sumOf { it.sets.size }
+}
+
 data class HistoryUiState(
     val history: List<WorkoutWithSportType> = emptyList(),
     val currentMonth: YearMonth = YearMonth.now(),
     val selectedDate: LocalDate = LocalDate.now(),
     val editing: HistoryEditState? = null,
+    val detailsByCheckInId: Map<Long, HistoryRecordDetail> = emptyMap(),
+    val feedback: String? = null,
 ) {
     val recordsForSelectedDate: List<WorkoutWithSportType>
         get() = history.filter { it.checkIn.dateEpochDay == selectedDate.toEpochDay() }
@@ -54,25 +80,46 @@ class HistoryViewModel(
     private val currentMonth = MutableStateFlow(YearMonth.now())
     private val selectedDate = MutableStateFlow(LocalDate.now())
     private val editing = MutableStateFlow<HistoryEditState?>(null)
+    private val detailsByCheckInId = MutableStateFlow<Map<Long, HistoryRecordDetail>>(emptyMap())
+    private val feedback = MutableStateFlow<String?>(null)
 
-    val uiState: StateFlow<HistoryUiState> =
+    private val baseUiState =
         combine(
             workoutRepository.observeHistory(),
             currentMonth,
             selectedDate,
             editing,
-        ) { history, month, selected, editing ->
+            detailsByCheckInId,
+        ) { history, month, selected, editing, details ->
             HistoryUiState(
                 history = history,
                 currentMonth = month,
                 selectedDate = selected,
                 editing = editing,
+                detailsByCheckInId = details,
             )
+        }
+
+    val uiState: StateFlow<HistoryUiState> =
+        combine(baseUiState, feedback) { state, feedback ->
+            state.copy(feedback = feedback)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = HistoryUiState(),
         )
+
+    init {
+        viewModelScope.launch {
+            combine(workoutRepository.observeHistory(), selectedDate) { history, selected ->
+                history.filter { it.checkIn.dateEpochDay == selected.toEpochDay() }
+            }.collectLatest { records ->
+                detailsByCheckInId.value = records.mapNotNull { record ->
+                    loadRecordDetail(record)?.let { detail -> record.checkIn.id to detail }
+                }.toMap()
+            }
+        }
+    }
 
     fun previousMonth() {
         currentMonth.update { it.minusMonths(1) }
@@ -149,6 +196,8 @@ class HistoryViewModel(
                         ),
                     )
                     editing.value = null
+                    selectedDate.value = date
+                    showFeedback("健身记录已保存")
                 }
             }
         }
@@ -159,6 +208,50 @@ class HistoryViewModel(
             workoutRepository.deleteCheckIn(record.checkIn.id)
             if (editing.value?.checkInId == record.checkIn.id) {
                 editing.value = null
+            }
+            showFeedback("记录已删除")
+        }
+    }
+
+    private suspend fun loadRecordDetail(record: WorkoutWithSportType): HistoryRecordDetail? =
+        when (record.sportType.id) {
+            BuiltInSportTypes.Running.id -> {
+                val running = workoutRepository.getRunningRecord(record.checkIn.id) ?: return null
+                HistoryRecordDetail(
+                    distanceKm = running.distanceKm,
+                    paceSecondsPerKm = running.paceSecondsPerKm,
+                )
+            }
+            BuiltInSportTypes.StrengthTraining.id -> {
+                val strength = workoutRepository.getStrengthRecordWithExercises(record.checkIn.id)
+                val fallback = workoutRepository.getStrengthRecord(record.checkIn.id)
+                HistoryRecordDetail(
+                    primaryBodyPart = strength?.record?.primaryBodyPart ?: fallback?.primaryBodyPart,
+                    exercises = strength
+                        ?.exercises
+                        ?.sortedBy { it.exercise.sortOrder }
+                        ?.map { exerciseWithSets ->
+                            HistoryExerciseDetail(
+                                name = exerciseWithSets.exercise.exerciseName,
+                                bodyPart = displayBodyPartName(exerciseWithSets.exercise.bodyPart),
+                                sets = exerciseWithSets.sets
+                                    .sortedBy { it.setIndex }
+                                    .map { set -> HistoryExerciseSetDetail(weightKg = set.weightKg, reps = set.reps) },
+                                note = exerciseWithSets.exercise.note,
+                            )
+                        }
+                        .orEmpty(),
+                )
+            }
+            else -> null
+        }
+
+    private fun showFeedback(message: String) {
+        feedback.value = message
+        viewModelScope.launch {
+            delay(2_200)
+            if (feedback.value == message) {
+                feedback.value = null
             }
         }
     }
@@ -184,6 +277,8 @@ class HistoryViewModel(
                     ),
                 )
                 editing.value = null
+                selectedDate.value = date
+                showFeedback("跑步记录已保存")
             }
         }
     }

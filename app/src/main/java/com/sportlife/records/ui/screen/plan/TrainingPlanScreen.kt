@@ -39,6 +39,7 @@ import com.sportlife.records.ui.theme.EvolveMuted
 import com.sportlife.records.ui.theme.EvolveNeon
 import com.sportlife.records.ui.theme.EvolveSurfaceHigh
 import com.sportlife.records.ui.theme.EvolveSurfaceLow
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -236,7 +237,11 @@ private fun PlanExerciseLine(exercise: TrainingPlanExerciseEntity) {
             Text("${exercise.sets} 组 x ${exercise.defaultReps} 次")
         }
         Text(
-            if (exercise.defaultWeightKg > 0.0) "默认重量 ${exercise.defaultWeightKg} kg" else "自重或未设重量",
+            if (exercise.defaultWeightKg > 0.0) {
+                "重量 ${formatWeightKg(exercise.defaultWeightKg)} kg"
+            } else {
+                "自重"
+            },
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
         )
@@ -245,3 +250,8 @@ private fun PlanExerciseLine(exercise: TrainingPlanExerciseEntity) {
         }
     }
 }
+
+private fun formatWeightKg(weightKg: Double): String =
+    String.format(Locale.US, "%.2f", weightKg)
+        .trimEnd('0')
+        .trimEnd('.')

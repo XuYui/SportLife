@@ -25,4 +25,8 @@ interface StrengthDao {
     @Transaction
     @Query("SELECT * FROM strength_records WHERE checkInId = :checkInId LIMIT 1")
     fun observeStrengthRecord(checkInId: Long): Flow<StrengthRecordWithExercises?>
+
+    @Transaction
+    @Query("SELECT * FROM strength_records WHERE checkInId = :checkInId LIMIT 1")
+    suspend fun getStrengthRecordWithExercises(checkInId: Long): StrengthRecordWithExercises?
 }

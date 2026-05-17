@@ -52,6 +52,8 @@ import androidx.compose.ui.unit.dp
 import com.sportlife.records.domain.model.BodyPart
 import com.sportlife.records.domain.model.displayBodyPartName
 import com.sportlife.records.ui.component.AppScaffold
+import com.sportlife.records.ui.component.AppDateField
+import com.sportlife.records.ui.component.SaveFeedbackMessage
 import com.sportlife.records.ui.theme.EvolveBackground
 import com.sportlife.records.ui.theme.EvolveMuted
 import com.sportlife.records.ui.theme.EvolveNeon
@@ -220,12 +222,10 @@ private fun CheckInFormCard(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text("填写打卡信息", color = EvolveMuted, style = MaterialTheme.typography.labelLarge)
-            OutlinedTextField(
+            AppDateField(
                 value = uiState.date,
                 onValueChange = onDateChange,
-                label = { Text("日期") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                label = "日期",
             )
             OutlinedTextField(
                 value = uiState.note,
@@ -240,7 +240,7 @@ private fun CheckInFormCard(
                 label = "strength-message",
             ) { message ->
                 if (message != null) {
-                    Text(message, color = EvolveNeon, fontWeight = FontWeight.Bold)
+                    SaveFeedbackMessage(message)
                 }
             }
             Button(
