@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sportlife.records.ui.component.AppScaffold
@@ -83,7 +84,7 @@ fun RunningCheckInScreen(
                 )
                 RunningDataCard(
                     title = "配速",
-                    value = uiState.pace.ifBlank { "--" },
+                    value = pacePreviewValue(uiState.pace),
                     unit = "/km",
                     icon = Icons.Default.Speed,
                     highlighted = false,
@@ -181,17 +182,35 @@ private fun RunningDataCard(
                 Icon(icon, contentDescription = null, tint = if (highlighted) EvolveNeon else EvolveMuted, modifier = Modifier.size(20.dp))
                 Text(title, color = EvolveMuted, style = MaterialTheme.typography.labelLarge)
             }
-            Row(verticalAlignment = Alignment.Bottom) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom,
+            ) {
                 Text(
                     text = value,
                     color = if (highlighted) EvolveNeon else MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
-                Text(unit, modifier = Modifier.padding(start = 5.dp, bottom = 3.dp), color = EvolveMuted)
+                Text(
+                    text = unit,
+                    modifier = Modifier.padding(start = 5.dp, bottom = 3.dp),
+                    color = EvolveMuted,
+                    maxLines = 1,
+                )
             }
         }
     }
+}
+
+private fun pacePreviewValue(pace: String): String {
+    val value = pace.trim()
+        .replace(Regex("\\s*/\\s*km\\s*$", RegexOption.IGNORE_CASE), "")
+        .trim()
+    return value.ifBlank { "--" }
 }
 
 @Composable
