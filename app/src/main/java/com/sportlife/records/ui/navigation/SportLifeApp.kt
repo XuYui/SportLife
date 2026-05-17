@@ -22,6 +22,7 @@ import com.sportlife.records.AppContainer
 import com.sportlife.records.ui.component.EvolveBottomBar
 import com.sportlife.records.ui.screen.backup.DataMigrationScreen
 import com.sportlife.records.ui.screen.backup.DataMigrationViewModel
+import com.sportlife.records.ui.screen.checkin.CheckInChooserScreen
 import com.sportlife.records.ui.screen.history.HistoryScreen
 import com.sportlife.records.ui.screen.history.HistoryViewModel
 import com.sportlife.records.ui.screen.home.HomeScreen
@@ -39,6 +40,7 @@ import com.sportlife.records.ui.screen.strength.StrengthCheckInViewModel
 
 private enum class Route(val path: String) {
     Home("home"),
+    Workout("workout"),
     Running("running"),
     Strength("strength"),
     Plan("plan"),
@@ -58,7 +60,7 @@ fun SportLifeApp(
     val selectedTab = when (currentRoute) {
         Route.Home.path -> "home"
         Route.Plan.path, Route.EditPlan.path -> "train"
-        Route.Running.path, Route.Strength.path -> "workout"
+        Route.Workout.path, Route.Running.path, Route.Strength.path -> "workout"
         Route.History.path -> "history"
         Route.Stats.path, Route.DataMigration.path -> "stats"
         else -> "home"
@@ -71,7 +73,7 @@ fun SportLifeApp(
                 selected = selectedTab,
                 onHome = { navController.navigateSingleTop(Route.Home.path) },
                 onTrain = { navController.navigateSingleTop(Route.Plan.path) },
-                onWorkout = { navController.navigateSingleTop(Route.Strength.path) },
+                onWorkout = { navController.navigateSingleTop(Route.Workout.path) },
                 onHistory = { navController.navigateSingleTop(Route.History.path) },
                 onStats = { navController.navigateSingleTop(Route.Stats.path) },
             )
@@ -111,6 +113,13 @@ fun SportLifeApp(
                 onSloganDraftChange = viewModel::updateSloganDraft,
                 onSaveSlogan = viewModel::saveSlogan,
                 onCancelSlogan = viewModel::cancelEditSlogan,
+            )
+        }
+        composable(Route.Workout.path) {
+            CheckInChooserScreen(
+                onRunningClick = { navController.navigate(Route.Running.path) },
+                onStrengthClick = { navController.navigate(Route.Strength.path) },
+                onBack = { navController.popBackStack() },
             )
         }
         composable(Route.Running.path) {
