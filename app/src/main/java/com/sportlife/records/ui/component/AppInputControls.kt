@@ -217,7 +217,8 @@ fun PaceQuickField(
             value = value,
             onValueChange = onValueChange,
             label = { Text("手动输入") },
-            placeholder = { Text("5'30\"/km") },
+            placeholder = { Text("530 或 5'30\"/km") },
+            supportingText = { Text("支持 530、6:00、5'30\"/km") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )

@@ -11,6 +11,7 @@ import com.sportlife.records.domain.model.BuiltInSportTypes
 import com.sportlife.records.domain.model.displayBodyPartName
 import com.sportlife.records.domain.util.formatForInput
 import com.sportlife.records.domain.util.formatPace
+import com.sportlife.records.domain.util.normalizePaceInput
 import com.sportlife.records.domain.util.parseInputDate
 import com.sportlife.records.domain.util.parsePaceSecondsPerKm
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,12 +60,22 @@ data class HistoryRecordDetail(
         get() = exercises.sumOf { it.sets.size }
 }
 
+data class CalendarTrainingLoad(
+    val recordCount: Int = 0,
+    val runningDistanceKm: Double = 0.0,
+    val strengthSets: Int = 0,
+) {
+    val score: Double
+        get() = runningDistanceKm + (strengthSets * 0.35) + (recordCount * 0.25)
+}
+
 data class HistoryUiState(
     val history: List<WorkoutWithSportType> = emptyList(),
     val currentMonth: YearMonth = YearMonth.now(),
     val selectedDate: LocalDate = LocalDate.now(),
     val editing: HistoryEditState? = null,
     val detailsByCheckInId: Map<Long, HistoryRecordDetail> = emptyMap(),
+    val calendarTrainingLoadsByDay: Map<Long, CalendarTrainingLoad> = emptyMap(),
     val feedback: String? = null,
 ) {
     val recordsForSelectedDate: List<WorkoutWithSportType>
@@ -72,6 +83,9 @@ data class HistoryUiState(
 
     val checkInCountsByDay: Map<Long, Int>
         get() = history.groupingBy { it.checkIn.dateEpochDay }.eachCount()
+
+    val maxCalendarTrainingLoad: Double
+        get() = calendarTrainingLoadsByDay.values.maxOfOrNull { it.score } ?: 0.0
 }
 
 class HistoryViewModel(
@@ -81,6 +95,7 @@ class HistoryViewModel(
     private val selectedDate = MutableStateFlow(LocalDate.now())
     private val editing = MutableStateFlow<HistoryEditState?>(null)
     private val detailsByCheckInId = MutableStateFlow<Map<Long, HistoryRecordDetail>>(emptyMap())
+    private val calendarTrainingLoadsByDay = MutableStateFlow<Map<Long, CalendarTrainingLoad>>(emptyMap())
     private val feedback = MutableStateFlow<String?>(null)
 
     private val baseUiState =
@@ -101,8 +116,11 @@ class HistoryViewModel(
         }
 
     val uiState: StateFlow<HistoryUiState> =
-        combine(baseUiState, feedback) { state, feedback ->
-            state.copy(feedback = feedback)
+        combine(baseUiState, feedback, calendarTrainingLoadsByDay) { state, feedback, loads ->
+            state.copy(
+                feedback = feedback,
+                calendarTrainingLoadsByDay = loads,
+            )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -117,6 +135,13 @@ class HistoryViewModel(
                 detailsByCheckInId.value = records.mapNotNull { record ->
                     loadRecordDetail(record)?.let { detail -> record.checkIn.id to detail }
                 }.toMap()
+            }
+        }
+        viewModelScope.launch {
+            combine(workoutRepository.observeHistory(), currentMonth) { history, month ->
+                history.filter { YearMonth.from(LocalDate.ofEpochDay(it.checkIn.dateEpochDay)) == month }
+            }.collectLatest { records ->
+                calendarTrainingLoadsByDay.value = buildCalendarTrainingLoads(records)
             }
         }
     }
@@ -172,7 +197,7 @@ class HistoryViewModel(
     fun updateEditDate(value: String) = editing.update { it?.copy(date = value, message = null) }
     fun updateEditNote(value: String) = editing.update { it?.copy(note = value, message = null) }
     fun updateEditDistance(value: String) = editing.update { it?.copy(distanceKm = value, message = null) }
-    fun updateEditPace(value: String) = editing.update { it?.copy(pace = value, message = null) }
+    fun updateEditPace(value: String) = editing.update { it?.copy(pace = normalizePaceInput(value), message = null) }
     fun updateEditBodyPart(value: String) = editing.update { it?.copy(bodyPart = value, message = null) }
 
     fun saveEdit() {
@@ -245,6 +270,38 @@ class HistoryViewModel(
             }
             else -> null
         }
+
+    private suspend fun buildCalendarTrainingLoads(
+        records: List<WorkoutWithSportType>,
+    ): Map<Long, CalendarTrainingLoad> {
+        val loads = linkedMapOf<Long, CalendarTrainingLoad>()
+        records.forEach { record ->
+            val date = record.checkIn.dateEpochDay
+            val current = loads[date] ?: CalendarTrainingLoad()
+            loads[date] = when (record.sportType.id) {
+                BuiltInSportTypes.Running.id -> {
+                    val distance = workoutRepository.getRunningRecord(record.checkIn.id)?.distanceKm ?: 0.0
+                    current.copy(
+                        recordCount = current.recordCount + 1,
+                        runningDistanceKm = current.runningDistanceKm + distance,
+                    )
+                }
+                BuiltInSportTypes.StrengthTraining.id -> {
+                    val strengthSets = workoutRepository
+                        .getStrengthRecordWithExercises(record.checkIn.id)
+                        ?.exercises
+                        ?.sumOf { it.sets.size }
+                        ?: 0
+                    current.copy(
+                        recordCount = current.recordCount + 1,
+                        strengthSets = current.strengthSets + strengthSets.coerceAtLeast(1),
+                    )
+                }
+                else -> current.copy(recordCount = current.recordCount + 1)
+            }
+        }
+        return loads
+    }
 
     private fun showFeedback(message: String) {
         feedback.value = message

@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sportlife.records.data.local.relation.WorkoutWithSportType
 import com.sportlife.records.domain.model.BuiltInSportTypes
@@ -92,7 +93,8 @@ fun HistoryScreen(
                 CalendarCard(
                     month = uiState.currentMonth,
                     selectedDate = uiState.selectedDate,
-                    counts = uiState.checkInCountsByDay,
+                    loads = uiState.calendarTrainingLoadsByDay,
+                    maxLoad = uiState.maxCalendarTrainingLoad,
                     onPreviousMonth = onPreviousMonth,
                     onNextMonth = onNextMonth,
                     onDateSelected = onDateSelected,
@@ -149,7 +151,8 @@ fun HistoryScreen(
 private fun CalendarCard(
     month: YearMonth,
     selectedDate: LocalDate,
-    counts: Map<Long, Int>,
+    loads: Map<Long, CalendarTrainingLoad>,
+    maxLoad: Double,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onDateSelected: (LocalDate) -> Unit,
@@ -181,6 +184,7 @@ private fun CalendarCard(
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "下个月")
                 }
             }
+            CalendarHeatLegend()
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf("日", "一", "二", "三", "四", "五", "六").forEach { label ->
                     Text(
@@ -203,7 +207,8 @@ private fun CalendarCard(
                         } else {
                             CalendarDayCell(
                                 date = date,
-                                count = counts[date.toEpochDay()] ?: 0,
+                                load = loads[date.toEpochDay()] ?: CalendarTrainingLoad(),
+                                maxLoad = maxLoad,
                                 selected = date == selectedDate,
                                 onClick = { onDateSelected(date) },
                                 modifier = Modifier.weight(1f),
@@ -220,19 +225,47 @@ private fun CalendarCard(
 }
 
 @Composable
+private fun CalendarHeatLegend() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("训练热力", color = EvolveMuted, style = MaterialTheme.typography.labelMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("少", color = EvolveMuted, style = MaterialTheme.typography.labelSmall)
+            listOf(0.22f, 0.44f, 0.68f, 0.9f).forEach { alpha ->
+                Box(
+                    modifier = Modifier
+                        .size(18.dp, 8.dp)
+                        .background(EvolveNeon.copy(alpha = alpha), RoundedCornerShape(999.dp)),
+                )
+            }
+            Text("多", color = EvolveMuted, style = MaterialTheme.typography.labelSmall)
+        }
+    }
+}
+
+@Composable
 private fun CalendarDayCell(
     date: LocalDate,
-    count: Int,
+    load: CalendarTrainingLoad,
+    maxLoad: Double,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val intensity = if (load.score > 0.0 && maxLoad > 0.0) {
+        (load.score / maxLoad).coerceIn(0.24, 1.0).toFloat()
+    } else {
+        0f
+    }
     val containerColor = when {
         selected -> EvolveNeon
-        count > 0 -> EvolveNeon
+        intensity > 0f -> EvolveNeon.copy(alpha = 0.18f + intensity * 0.62f)
         else -> EvolveSurfaceHigh
     }
-    val contentColor = if (selected || count > 0) {
+    val contentColor = if (selected || intensity > 0.72f) {
         EvolveBackground
     } else {
         MaterialTheme.colorScheme.onSurface
@@ -244,7 +277,7 @@ private fun CalendarDayCell(
         shape = RoundedCornerShape(8.dp),
         border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.onSurface) else null,
         colors = CardDefaults.cardColors(containerColor = containerColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (count > 0 || selected) 2.dp else 0.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (intensity > 0f || selected) 2.dp else 0.dp),
     ) {
         Column(
             modifier = Modifier
@@ -256,23 +289,36 @@ private fun CalendarDayCell(
             Text(
                 date.dayOfMonth.toString(),
                 color = contentColor,
-                fontWeight = if (count > 0 || selected) FontWeight.Bold else FontWeight.Normal,
+                fontWeight = if (intensity > 0f || selected) FontWeight.Bold else FontWeight.Normal,
             )
-            if (count > 0) {
+            if (load.score > 0.0) {
                 Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
                             .size(6.dp)
                             .background(contentColor.copy(alpha = 0.82f), CircleShape),
                     )
-                    if (count > 1) {
-                        Text("x$count", style = MaterialTheme.typography.labelSmall, color = contentColor)
-                    }
+                    Text(
+                        text = loadLabel(load),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = contentColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
         }
     }
 }
+
+private fun loadLabel(load: CalendarTrainingLoad): String =
+    when {
+        load.runningDistanceKm > 0.0 && load.strengthSets > 0 -> "${load.recordCount}项"
+        load.runningDistanceKm > 0.0 -> "${formatDistance(load.runningDistanceKm)}km"
+        load.strengthSets > 0 -> "${load.strengthSets}组"
+        load.recordCount > 0 -> "${load.recordCount}条"
+        else -> ""
+    }
 
 @Composable
 private fun DailyDetailSummary(

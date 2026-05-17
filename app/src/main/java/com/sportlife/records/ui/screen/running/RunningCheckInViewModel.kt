@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.sportlife.records.data.repository.RunningCheckInInput
 import com.sportlife.records.data.repository.WorkoutRepository
 import com.sportlife.records.domain.util.formatForInput
+import com.sportlife.records.domain.util.normalizePaceInput
 import com.sportlife.records.domain.util.parseInputDate
 import com.sportlife.records.domain.util.parsePaceSecondsPerKm
 import kotlinx.coroutines.delay
@@ -30,7 +31,7 @@ class RunningCheckInViewModel(
     val uiState: StateFlow<RunningCheckInUiState> = _uiState
 
     fun updateDistance(value: String) = _uiState.update { it.copy(distanceKm = value, message = null) }
-    fun updatePace(value: String) = _uiState.update { it.copy(pace = value, message = null) }
+    fun updatePace(value: String) = _uiState.update { it.copy(pace = normalizePaceInput(value), message = null) }
     fun updateDate(value: String) = _uiState.update { it.copy(date = value, message = null) }
     fun updateNote(value: String) = _uiState.update { it.copy(note = value, message = null) }
 
